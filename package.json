@@ -20,7 +20,7 @@
   "dependencies": {
     "consul": "^0.37.0",
     "debounce": "^1.2.0",
-    "dedent": "^0.7.0",
+    "minimist": "^1.2.5",
     "winston": "^3.3.3"
   },
   "devDependencies": {

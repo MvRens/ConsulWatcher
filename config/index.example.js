@@ -1,47 +1,48 @@
+const winston = require('winston');
+const setIndent = require('./setindent');
+
+
 const config = {
+  /*
+
+    Consul agent configuration
+      Determines the agent or server which will be queried and
+      monitored for the service catalog.
+
+      Recommended to be a local agent connected to the cluster.
+
+      Passed to the initialization of the Node Consul client.
+      For all options, see: https://github.com/silas/node-consul#init
+
+  */
+  consul: {
+    host: 'pc-mvrenswoude'
+  },
+
+
+  /*
+
+    Logging
+      See: https://github.com/winstonjs/winston#transports
+
+  */
+  logging: {
+    transports: [
+      new winston.transports.Console({
+        level: 'debug',
+        timestamp: true,
+        format: winston.format.combine(
+          winston.format.colorize(),
+          winston.format.simple()
+        )
+      })
+    ]
+  },
+
   onUpdate: [],
   afterUpdate: null
 };
 
-
-/*
-
-  Consul agent configuration
-    Determines the agent or server which will be queried and
-    monitored for the service catalog.
-
-    Recommended to be a local agent connected to the cluster.
-
-    Passed to the initialization of the Node Consul client.
-    For all options, see: https://github.com/silas/node-consul#init
-
-*/
-config.consul = {
-  host: 'localhost'
-}
-
-
-
-/*
-
-  Logging
-    See: https://github.com/winstonjs/winston#transports
-
-*/
-const winston = require('winston');
-
-config.logging = {
-  transports: [
-    new winston.transports.Console({
-      level: 'debug',
-      timestamp: true,
-      format: winston.format.combine(
-        winston.format.colorize(),
-        winston.format.simple()
-      )
-    })
-  ]
-};
 
 
 /*
@@ -65,24 +66,39 @@ config.logging = {
 const fs = require('fs').promises;
 
 
-config.onUpdate.push((catalog, logger) =>
+config.onUpdate.push(async (catalog, logger) =>
 {
   // Use catalog parameter to generate output
   let output = '';
 
   for (const service of catalog.services)
   {
-    output +=
-`Service: ${service.name}
-  Tags:    ${JSON.stringify(service.tags)}
-  Address: ${await service.getAddress()}
-  Port:    ${await service.getPort()}
+    let instances = '';
 
-`;
+    for (const instance of await service.getInstances())
+    {
+      instances += setIndent(2, `
+        Address: ${instance.address}
+        Port:    ${instance.port}
+
+        `);
+    }
+
+    output += setIndent(`
+      Service: ${service.name}
+        Tags:  ${JSON.stringify(service.tags)}
+
+      `);
+
+    output += instances + '\n';
   };
 
   await fs.writeFile('example-output.txt', output);
 });
+
+
+// Example on how to split the update handlers into a separate file
+config.onUpdate.push(require('./included.example'));
 
 
 /*
